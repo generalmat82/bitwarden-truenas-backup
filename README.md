@@ -1,5 +1,6 @@
 # bitwarden-truenas-backup
-An automated system to easily backup a selfhosted instance of Bitwarden to a TrueNAS scale NFS share enabling and disabling said share.
+An automated system to easily backup a selfhosted instance of Bitwarden to a TrueNAS NFS share enabling and disabling said share.
+The current version is for version 25.10.5 of TrueNAS
 
 # Installation:
 It is quite simple to install the system. First you must clone the repo and create a python venv.
@@ -8,7 +9,7 @@ It is quite simple to install the system. First you must clone the repo and crea
 ```bash
 git clone https://github.com/generalmat82/bitwarden-truenas-backup.git
 cd bitwarden-truenas-backup
-python3 -m venv ./
+python3 -m venv .venv
 ```
 
 Make sure to add to /etc/fstab a mount that does not automount to your share.
@@ -16,33 +17,44 @@ Make sure to add to /etc/fstab a mount that does not automount to your share.
 <addr>:/</share/path>    <share/mount> nfs     rw,relatime,user,noauto 0       0
 ```
 
-After, you need to install the required py package, the system only requires 1 py package: websocket
-
+After, you need to install the required py package, the system only requires 2 py package: api_client and python-dotenv
+The package depends on your trueNAS version so you should run the following, make sure to replace the \<tag\> with your version (e.g `TS-25.04.2.6`)
 ```bash
-./bin/pip install websocket
+./.venv/bin/pip install git+https://github.com/truenas/api_client.git@<tag>
+./.venv/bin/pip install python-dotenv
 ```
 
-# configuration:
+# Configuration:
 
-
-Now create a new file named `.env` and add the following to the file:
+There is an example .env file named `.env.example` copy it into `.env`
+You can now fill up the required information, here is a filled example:
 ```env
-apikey="<insert key here>"
-localBackupPath="<insert path here>"
-remoteBackupPath="<insert path of mount>"
-truenas_share_id="<insert share id>"
-truenas_addr="<insert ip address>"
-bitwarden_path="<path to bitwarden bwdata dir>"
+TRUENAS_URI="wss://truenas.domain/api/current"
+API_KEY="3-dfjkglhfdjklghkjlfghkjtjyHTdfgfTYHjbnkltfhyioklfgjkltd59046okd04"
+LOCAL_BACKUP_PATH="/opt/backups"
+REMOTE_BACKUP_PATH="/media/backup"
+TRUENAS_SHARE_PATH="/mnt/my_pool/backup"
+BITWARDEN_PATH="/opt/bitwarden/bwdata"
 ```
+After which, you may want to test the configuration: `./backup.sh`
+You can then use the script how ever you want. Reccommentation is to put it on a CronTab.
+# Explanation of the .env parameters
+Here is an explanation of each parameters
 
-## obtaining the share ID and api key:
+## TRUENAS_URI
+This would be the endpoint of the TrueNAS machine.
 
-In order to obtain the API key, go to your truenas dashboard and select your user then select "API Keys".
+## API_KEY
+This is the API key for the TrueNAS API
 
-In the API Keys window, create an API key via the add button and name it then copy the key.
+## LOCAL_BACKUP_PATH
+Location of the backup locally.
 
-In the same tab select "API Docs" beside "Add", in this new tab select RESTful 2.0 in the top left. Then press the "authorize" button and enter your user's credentials and select "Authorize".
+## REMOTE_BACKUP_PATH
+Location of the mount set in `/etc/fstab`
 
-After, seacrch for "/sharing/nfs" and expend the "get" command by the same name.
+## TRUENAS_SHARE_PATH
+Full path of the TrueNAS share dataset.
 
-Press "Try it out" followed by "Execute", in the response find the ID for the wanted share.
+## BITWARDEN_PATH
+bwdata file path

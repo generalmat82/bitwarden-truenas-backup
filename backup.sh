@@ -5,17 +5,24 @@ source ${SCRIPT_DIR}/.env
 
 if (( "$#" == "1" )); then
   echo "Opening share"
-  ${SCRIPT_DIR}/bin/python ${SCRIPT_DIR}/websocket-test.py true true
+  ${SCRIPT_DIR}/.venv/bin/python ${SCRIPT_DIR}/share-control.py true
   echo "Share opened, now mounting"
-  mount ${remoteBackupPath}
+  mount ${REMOTE_BACKUP_PATH}
   echo "mounted"
   date_iso=$(date --iso-8601)
-  echo "${localBackupPath}/${date_iso}-bwdata.tar.gz"
+  echo "${LOCAL_BACKUP_PATH}/${date_iso}-bwdata.tar.gz"
   echo "now compressing"
-  tar -czvf "${localBackupPath}/${date_iso}-bwdata.tar.gz" ${bitwarden_path}
+  tar -czvf "${LOCAL_BACKUP_PATH}/${date_iso}-bwdata.tar.gz" ${BITWARDEN_PATH}
   echo "compression done, now copying to share"
-  rsync --progress "${localBackupPath}/${date_iso}-bwdata.tar.gz" "${remoteBackupPath}/${date_iso}-bwdata.tar.gz"
-  echo "copy over, now waiting for potential sync delay"
+  rsync --progress "${LOCAL_BACKUP_PATH}/${date_iso}-bwdata.tar.gz" "${REMOTE_BACKUP_PATH}/${date_iso}-bwdata.tar.gz"
+  echo "copy over now deleting old version"
+  echo "now deleting local backup from 2 weeks ago"
+  date_iso_2w=$(date --iso-8601 --date="2 week ago")
+  rm ${LOCAL_BACKUP_PATH}/${date_iso_2w}-bwdata.tar.gz
+  echo "deleted local backup, now deleting remote backup from 2 month ago"
+  date_iso_2m=$(date --iso-8601 --date="2 month ago")
+  rm ${REMOTE_BACKUP_PATH}/${date_iso_2m}-bwdata.tar.gz
+  echo "deletion deleted, now waiting for potential sync delay"
   sleep 15s
   echo "30s to go"
   sleep 15s
@@ -23,23 +30,22 @@ if (( "$#" == "1" )); then
   sleep 15s
   echo "wait over"
   echo "now unmounting"
-  umount ${remoteBackupPath}
+  umount ${REMOTE_BACKUP_PATH}
   echo "unmounted, now closing share"
-  ${SCRIPT_DIR}/bin/python ${SCRIPT_DIR}/websocket-test.py false true
+  ${SCRIPT_DIR}/.venv/bin/python ${SCRIPT_DIR}/share-control.py false
   echo "share closed, backup over"
-  echo "now deleting local backup from 2 weeks ago"
-  date_iso_2w=$(date --iso-8601 --date="2 week ago")
-  rm ${localBackupPath}/${date_iso_2w}-bwdata.tar.gz
-  echo "deleted, all completed."
+  echo "all completed."
 else
-  ${SCRIPT_DIR}/bin/python ${SCRIPT_DIR}/websocket-test.py  true false
-  mount ${remoteBackupPath}
+  ${SCRIPT_DIR}/.venv/bin/python ${SCRIPT_DIR}/share-control.py  true
+  mount ${REMOTE_BACKUP_PATH}
   date_iso=$(date --iso-8601)
-  tar -czvf "${localBackupPath}/${date_iso}-bwdata.tar.gz" ${bitwarden_path}
-  rsync "${localBackupPath}/${date_iso}-bwdata.tar.gz" "${remoteBackupPath}/${date_iso}-bwdata.tar.gz"
-  sleep 45s
-  umount ${remoteBackupPath}
-  ${SCRIPT_DIR}/bin/python ${SCRIPT_DIR}/websocket-test.py false false
+  tar -czf "${LOCAL_BACKUP_PATH}/${date_iso}-bwdata.tar.gz" ${BITWARDEN_PATH}
+  rsync "${LOCAL_BACKUP_PATH}/${date_iso}-bwdata.tar.gz" "${REMOTE_BACKUP_PATH}/${date_iso}-bwdata.tar.gz"
   date_iso_2w=$(date --iso-8601 --date="2 week ago")
-  rm ${localBackupPath}/${date_iso_2w}-bwdata.tar.gz
+  rm ${LOCAL_BACKUP_PATH}/${date_iso_2w}-bwdata.tar.gz
+  date_iso_2m=$(date --iso-8601 --date="2 month ago")
+  rm ${REMOTE_BACKUP_PATH}/${date_iso_2m}-bwdata.tar.gz
+  sleep 45s
+  umount ${REMOTE_BACKUP_PATH}
+  ${SCRIPT_DIR}/.venv/bin/python ${SCRIPT_DIR}/share-control.py false
 fi
